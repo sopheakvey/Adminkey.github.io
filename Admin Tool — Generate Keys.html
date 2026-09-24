@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tool — License Admin (Secure)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0D1117; --bg2: #161B22; --bg3: #21262D; --border: #30363D;
+            --fg: #E5E7EB; --muted: #8B949E; --green: #10B981; --green-dark: #059669;
+            --red: #DC2626; --purple: #8B5CF6; --yellow: #F59E0B;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--fg); min-height: 100vh;
+            padding: 20px; line-height: 1.5;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        /* LOGIN OVERLAY */
+        .login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(13, 17, 23, 0.95); backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; padding: 20px;
+        }
+        .login-card {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 24px; padding: 40px 32px; max-width: 420px;
+            width: 100%; box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+            border-top: 4px solid var(--green);
+        }
+        .login-card h2 {
+            font-size: 24px; font-weight: 800; margin-bottom: 6px;
+            display: flex; align-items: center; gap: 10px; color: var(--green);
+        }
+        .login-card .sub {
+            color: var(--muted); font-size: 13px; margin-bottom: 28px;
+        }
+        .login-card .form-group { margin-bottom: 20px; }
+        .login-card label {
+            display: block; margin-bottom: 8px; font-size: 12px;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .login-card input {
+            width: 100%; padding: 14px 16px; background: var(--bg);
+            border: 1.5px solid var(--border); border-radius: 10px;
+            color: var(--green); font-size: 15px; font-family: 'Consolas', monospace;
+            transition: all 0.2s;
+        }
+        .login-card input:focus {
+            outline: none; border-color: var(--green);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+        .login-card .btn-login {
+            width: 100%; padding: 16px; background: linear-gradient(135deg, var(--green), var(--green-dark));
+            border: none; border-radius: 10px; color: white; font-weight: 800;
+            font-size: 15px; cursor: pointer; transition: all 0.2s;
+            font-family: inherit; margin-top: 8px;
+        }
+        .login-card .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+        }
+        .login-error {
+            background: rgba(220, 38, 38, 0.15); color: #F87171;
+            padding: 12px 16px; border-radius: 8px; font-size: 13px;
+            margin-top: 16px; border: 1px solid rgba(220, 38, 38, 0.3);
+            display: none; align-items: center; gap: 8px;
+        }
+        .login-error.show { display: flex; }
+        .hidden { display: none !important; }
+
+        /* rest of original styles (unchanged) */
+        .header {
+            background: linear-gradient(135deg, var(--green), var(--green-dark));
+            border-radius: 16px; padding: 30px; margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(16, 185, 129, 0.25);
+            position: relative; overflow: hidden;
+        }
+        .header::before {
+            content: ''; position: absolute; top: -50%; right: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .header-content { position: relative; z-index: 1; }
+        .header h1 { font-size: 28px; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.5px; }
+        .header p { opacity: 0.9; font-size: 14px; }
+        .badge-local {
+            display: inline-block; padding: 4px 12px; background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px; font-size: 11px; font-weight: 700;
+            margin-top: 10px; letter-spacing: 0.5px;
+        }
+        .stats {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px; margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px; transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); border-color: var(--green); }
+        .stat-card .label {
+            color: var(--muted); font-size: 11px; text-transform: uppercase;
+            letter-spacing: 1px; margin-bottom: 8px; font-weight: 700;
+        }
+        .stat-card .value { font-size: 36px; font-weight: 800; color: var(--green); line-height: 1; }
+        .stat-card .value.red { color: #F87171; }
+        .stat-card .value.yellow { color: var(--yellow); }
+        .panel {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px; margin-bottom: 24px;
+        }
+        .panel h2 {
+            font-size: 17px; margin-bottom: 20px; color: var(--green);
+            font-weight: 700; display: flex; align-items: center; gap: 8px;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block; margin-bottom: 8px; font-size: 12px;
+            font-weight: 700; color: var(--fg); text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input, .form-group select {
+            width: 100%; padding: 12px 16px; background: var(--bg);
+            border: 1.5px solid var(--border); border-radius: 8px;
+            color: var(--green); font-size: 14px;
+            font-family: 'Consolas', 'Monaco', monospace; transition: all 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none; border-color: var(--green);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+        }
+        .form-group input::placeholder { color: #4B5563; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+        button {
+            padding: 12px 24px; border: none; border-radius: 8px;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s; display: inline-flex; align-items: center;
+            gap: 8px; font-family: inherit;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--green), var(--green-dark));
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, var(--red), #B91C1C);
+            color: white;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+        }
+        .btn-purple {
+            background: linear-gradient(135deg, var(--purple), #7C3AED);
+            color: white;
+        }
+        .btn-secondary {
+            background: var(--bg3); color: var(--fg); border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: #2D333B; border-color: var(--green); }
+        .btn-small { padding: 6px 12px; font-size: 11px; }
+        .result-box {
+            background: var(--bg); border: 2px solid var(--green);
+            border-radius: 12px; padding: 24px; margin-top: 20px;
+            display: none; animation: slideDown 0.3s ease-out;
+        }
+        .result-box.show { display: block; }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .result-box .label-text {
+            text-align: center; color: var(--muted); font-size: 12px;
+            margin-bottom: 12px; text-transform: uppercase;
+            letter-spacing: 1px; font-weight: 700;
+        }
+        .result-box .key-value {
+            font-size: 42px; font-weight: 800; color: var(--green);
+            text-align: center; padding: 20px; background: var(--bg2);
+            border-radius: 10px; margin: 12px 0; letter-spacing: 8px;
+            cursor: pointer; font-family: 'Consolas', monospace;
+            transition: all 0.2s; user-select: all;
+        }
+        .result-box .key-value:hover { background: var(--bg3); transform: scale(1.02); }
+        .result-box .meta {
+            display: flex; justify-content: space-between; font-size: 12px;
+            color: var(--muted); margin-top: 12px; padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .result-box .meta span {
+            color: var(--green); font-weight: 700; font-family: 'Consolas', monospace;
+        }
+        .table-wrap {
+            overflow-x: auto; border-radius: 10px; border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead { background: var(--bg3); }
+        th {
+            padding: 14px 12px; text-align: left; color: var(--green);
+            font-weight: 700; font-size: 11px; text-transform: uppercase;
+            letter-spacing: 1px; white-space: nowrap;
+        }
+        td {
+            padding: 14px 12px; border-top: 1px solid var(--border);
+            font-family: 'Consolas', monospace; font-size: 12px; white-space: nowrap;
+        }
+        tbody tr { transition: background 0.15s; }
+        tbody tr:hover { background: var(--bg3); }
+        .badge {
+            display: inline-block; padding: 4px 12px; border-radius: 20px;
+            font-size: 11px; font-weight: 700; white-space: nowrap;
+        }
+        .badge-active {
+            background: rgba(16, 185, 129, 0.15); color: var(--green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .badge-expired {
+            background: rgba(220, 38, 38, 0.15); color: #F87171;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+        }
+        .toast {
+            position: fixed; top: 24px; right: 24px; background: var(--green);
+            color: white; padding: 16px 24px; border-radius: 10px;
+            font-weight: 700; font-size: 13px;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+            transform: translateX(500px);
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 10000; max-width: 400px; display: flex;
+            align-items: center; gap: 10px;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast.error {
+            background: var(--red); box-shadow: 0 8px 24px rgba(220, 38, 38, 0.4);
+        }
+        .empty-state {
+            text-align: center; padding: 60px 20px; color: var(--muted); font-size: 14px;
+        }
+        .empty-state .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+        .backup-bar {
+            display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
+            padding: 16px; background: rgba(139, 92, 246, 0.1);
+            border: 1px dashed rgba(139, 92, 246, 0.4); border-radius: 10px;
+        }
+        .backup-bar .info {
+            flex: 1; font-size: 12px; color: var(--muted);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .backup-bar .info strong { color: var(--purple); }
+        .notice {
+            padding: 12px 16px; background: rgba(245, 158, 11, 0.1);
+            border-left: 3px solid var(--yellow); border-radius: 6px;
+            font-size: 12px; color: var(--fg); margin-bottom: 16px; line-height: 1.6;
+        }
+        .notice strong { color: var(--yellow); }
+        .footer {
+            text-align: center; padding: 24px; color: var(--muted);
+            font-size: 12px; border-top: 1px solid var(--border); margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- LOGIN OVERLAY (shown first) -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="login-overlay" id="loginOverlay">
+    <div class="login-card">
+        <h2>🔐 Admin Login</h2>
+        <div class="sub">Enter credentials to access the license manager</div>
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="loginUser" placeholder="Admin" autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="loginPass" placeholder="••••••••" autocomplete="off">
+        </div>
+        <button class="btn-login" id="loginBtn">🔓 Unlock Panel</button>
+        <div class="login-error" id="loginError">
+            <span>⛔</span> Invalid username or password
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- MAIN ADMIN PANEL (hidden until login) -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="container hidden" id="adminPanel">
+    
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-content">
+            <h1>🔐 AI Tool — License Admin</h1>
+            <p>Offline License Key Generator</p>
+            <span class="badge-local">💾 LOCAL STORAGE MODE</span>
+        </div>
+    </div>
+    
+    <!-- STATS -->
+    <div class="stats">
+        <div class="stat-card">
+            <div class="label">Total Licenses</div>
+            <div class="value" id="totalCount">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Active</div>
+            <div class="value" id="activeCount">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Expired</div>
+            <div class="value red" id="expiredCount">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Storage</div>
+            <div class="value yellow" style="font-size: 18px;">Browser</div>
+        </div>
+    </div>
+    
+    <!-- NOTICE -->
+    <div class="notice">
+        <strong>⚠️ សំខាន់:</strong> Data ត្រូវបានរក្សាទុកក្នុង <strong>Browser localStorage</strong>។
+        សូម <strong>Export Backup</strong> ជាទៀងទាត់ ដើម្បីកុំឱ្យបាត់បង់ Data នៅពេល Clear Browser Cache។
+    </div>
+    
+    <!-- GENERATE PANEL -->
+    <div class="panel">
+        <h2>🔑 Generate License Key</h2>
+        
+        <div class="form-group">
+            <label>Hardware ID (HWID) *</label>
+            <input type="text" id="hwid" placeholder="A1B2C3D4-E5F6-7890-ABCD-EF1234567890" autocomplete="off" spellcheck="false">
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>User Name</label>
+                <input type="text" id="userName" placeholder="John Doe" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>User Email</label>
+                <input type="email" id="userEmail" placeholder="john@example.com" autocomplete="off">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Duration</label>
+            <select id="duration">
+                <option value="30">30 Days</option>
+                <option value="90">90 Days</option>
+                <option value="180">180 Days</option>
+                <option value="365" selected>1 Year</option>
+                <option value="730">2 Years</option>
+                <option value="99999">Forever</option>
+            </select>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn-primary" onclick="generateKey()">🔑 Generate Key</button>
+            <button class="btn-secondary" onclick="pasteHWID()">📋 Paste HWID</button>
+            <button class="btn-secondary" onclick="clearForm()">🗑️ Clear Form</button>
+        </div>
+        
+        <div class="result-box" id="resultBox">
+            <div class="label-text">✅ License Key Generated</div>
+            <div class="key-value" id="resultKey" onclick="copyKey()">----------</div>
+            <div style="text-align: center; color: var(--muted); font-size: 12px;">
+                👆 Click ដើម្បី Copy
+            </div>
+            <div class="meta">
+                <div>HWID: <span id="resultHwid">-</span></div>
+                <div>Expires: <span id="resultExpires">-</span></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- LIST PANEL -->
+    <div class="panel">
+        <h2>📋 All Licenses</h2>
+        
+        <div class="backup-bar">
+            <div class="info">
+                💾 <strong>Backup:</strong> <span id="lastBackup">មិនទាន់ Backup</span>
+            </div>
+            <button class="btn-purple btn-small" onclick="exportDB()">📥 Export JSON</button>
+            <button class="btn-secondary btn-small" onclick="importDB()">📤 Import JSON</button>
+            <button class="btn-danger btn-small" onclick="clearAll()">🗑️ Clear All</button>
+        </div>
+        
+        <div class="btn-group" style="margin-top: 0; margin-bottom: 16px;">
+            <button class="btn-secondary btn-small" onclick="renderTable()">🔄 Refresh</button>
+        </div>
+        
+        <div id="licenseList">
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <div>មិនទាន់មាន License ទេ</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- FOOTER -->
+    <div class="footer">
+        AI Tool — Offline License Admin v1.0<br>
+        Powered by Browser localStorage · No Server Required
+    </div>
+</div>
+
+<!-- HIDDEN FILE INPUT -->
+<input type="file" id="fileInput" accept=".json" style="display: none;">
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// AUTHENTICATION — Hardcoded credentials
+// ═══════════════════════════════════════════════════════════════
+const ADMIN_USER = "Admin";
+const ADMIN_PASS = "surtereii";
+
+// DOM refs
+const loginOverlay = document.getElementById('loginOverlay');
+const adminPanel = document.getElementById('adminPanel');
+const loginBtn = document.getElementById('loginBtn');
+const loginUser = document.getElementById('loginUser');
+const loginPass = document.getElementById('loginPass');
+const loginError = document.getElementById('loginError');
+
+function showAdmin() {
+    loginOverlay.classList.add('hidden');
+    adminPanel.classList.remove('hidden');
+    // Init admin panel logic (same as before)
+    renderTable();
+    updateBackupDisplay();
+    document.getElementById('hwid').focus();
+    console.log("✅ Admin Panel ready");
+}
+
+function attemptLogin() {
+    const user = loginUser.value.trim();
+    const pass = loginPass.value.trim();
+
+    if (user === ADMIN_USER && pass === ADMIN_PASS) {
+        // success
+        loginError.classList.remove('show');
+        showAdmin();
+        showToast("🔓 Welcome, Admin");
+    } else {
+        loginError.classList.add('show');
+        loginPass.value = '';
+        loginUser.focus();
+        // shake effect on card
+        const card = document.querySelector('.login-card');
+        card.style.transform = 'translateX(6px)';
+        setTimeout(() => card.style.transform = 'translateX(-6px)', 80);
+        setTimeout(() => card.style.transform = 'translateX(4px)', 160);
+        setTimeout(() => card.style.transform = 'translateX(0)', 240);
+    }
+}
+
+loginBtn.addEventListener('click', attemptLogin);
+loginPass.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptLogin(); });
+loginUser.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginPass.focus(); });
+
+// ═══════════════════════════════════════════════════════════════
+// ORIGINAL ADMIN LOGIC (unchanged, but wrapped to run after login)
+// ═══════════════════════════════════════════════════════════════
+const SECRET_KEY = "AI_TOOL_SECRET_2026_xK9mN3pQ";
+const STORAGE_KEY = "ai_tool_licenses_v1";
+const BACKUP_KEY = "ai_tool_backup_date";
+
+async function generateKeyFromHWID(hwid) {
+    const message = `${hwid.toUpperCase()}|v3`;
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(SECRET_KEY);
+    const msgData = encoder.encode(message);
+    const cryptoKey = await crypto.subtle.importKey(
+        "raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+    );
+    const signature = await crypto.subtle.sign("HMAC", cryptoKey, msgData);
+    const hex = Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+        .toUpperCase();
+    return hex.substring(0, 8);
+}
+
+function loadDB() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+        console.error("Load error:", e);
+        return {};
+    }
+}
+
+function saveDB(data) {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        return true;
+    } catch (e) {
+        console.error("Save error:", e);
+        showToast("❌ Cannot save: " + e.message, true);
+        return false;
+    }
+}
+
+function showToast(msg, isError = false) {
+    const toast = document.getElementById('toast');
+    toast.textContent = (isError ? '❌ ' : '✅ ') + msg;
+    toast.className = 'toast show' + (isError ? ' error' : '');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => {
+        toast.className = 'toast' + (isError ? ' error' : '');
+    }, 3000);
+}
+
+function formatDate(iso) {
+    if (!iso) return 'N/A';
+    try {
+        const d = new Date(iso);
+        return d.toISOString().slice(0, 10);
+    } catch (e) {
+        return 'N/A';
+    }
+}
+
+function isExpired(info) {
+    if (!info.expires_at) return true;
+    try {
+        return new Date(info.expires_at) < new Date();
+    } catch (e) {
+        return true;
+    }
+}
+
+async function generateKey() {
+    const hwid = document.getElementById('hwid').value.trim().toUpperCase();
+    if (!hwid) {
+        showToast("សូមបញ្ចូល HWID", true);
+        document.getElementById('hwid').focus();
+        return;
+    }
+    const name = document.getElementById('userName').value.trim();
+    const email = document.getElementById('userEmail').value.trim();
+    const days = parseInt(document.getElementById('duration').value);
+    const db = loadDB();
+    if (db[hwid]) {
+        if (!confirm(`⚠️ HWID នេះមានរួចហើយ:\n\nKey: ${db[hwid].key}\nUser: ${db[hwid].user_name || '(none)'}\n\nចង់ Generate ថ្មី (Overwrite)?`)) {
+            return;
+        }
+    }
+    const key = await generateKeyFromHWID(hwid);
+    const created = new Date();
+    const expires = new Date(created.getTime() + days * 24 * 60 * 60 * 1000);
+    db[hwid] = {
+        key: key,
+        user_name: name,
+        user_email: email,
+        active: true,
+        created_at: created.toISOString(),
+        expires_at: expires.toISOString()
+    };
+    if (!saveDB(db)) return;
+    document.getElementById('resultKey').textContent = key;
+    document.getElementById('resultHwid').textContent = hwid;
+    document.getElementById('resultExpires').textContent = formatDate(expires.toISOString());
+    document.getElementById('resultBox').classList.add('show');
+    try {
+        await navigator.clipboard.writeText(key);
+        showToast(`Key: ${key} — បាន Copy!`);
+    } catch (e) {
+        showToast(`Key: ${key}`);
+    }
+    renderTable();
+}
+
+function copyKey() {
+    const key = document.getElementById('resultKey').textContent;
+    if (key === '----------') return;
+    navigator.clipboard.writeText(key).then(() => {
+        showToast(`Copied: ${key}`);
+    }).catch(() => {
+        const range = document.createRange();
+        range.selectNode(document.getElementById('resultKey'));
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        document.execCommand('copy');
+        showToast(`Copied: ${key}`);
+    });
+}
+
+async function pasteHWID() {
+    try {
+        const text = await navigator.clipboard.readText();
+        document.getElementById('hwid').value = text.trim();
+        showToast("📋 Pasted from clipboard");
+        document.getElementById('hwid').focus();
+    } catch (e) {
+        showToast("Cannot read clipboard — paste manually", true);
+        document.getElementById('hwid').focus();
+    }
+}
+
+function clearForm() {
+    document.getElementById('hwid').value = '';
+    document.getElementById('userName').value = '';
+    document.getElementById('userEmail').value = '';
+    document.getElementById('resultBox').classList.remove('show');
+    document.getElementById('hwid').focus();
+    showToast("Form cleared");
+}
+
+function deleteLicense(hwid) {
+    if (!confirm(`⚠️ លុប License នេះ?\n\nHWID: ${hwid}\n\nមិនអាចថយក្រោយបានទេ!`)) return;
+    const db = loadDB();
+    if (db[hwid]) {
+        delete db[hwid];
+        saveDB(db);
+        showToast(`Deleted: ${hwid}`);
+        renderTable();
+    }
+}
+
+function clearAll() {
+    const db = loadDB();
+    const count = Object.keys(db).length;
+    if (count === 0) {
+        showToast("គ្មាន License ទេ", true);
+        return;
+    }
+    if (!confirm(`⚠️⚠️⚠️ DANGER ⚠️⚠️⚠️\n\nលុប License ទាំង ${count} ចោលទាំងអស់?\n\nសូម Export Backup ជាមុនសិន!\nមិនអាចថយក្រោយបានទេ!`)) return;
+    if (!confirm(`🔴 FINAL CONFIRMATION\n\nតើអ្នកប្រាកដទេ?\nលុប License ទាំងអស់?`)) return;
+    saveDB({});
+    showToast(`Deleted all ${count} licenses`);
+    renderTable();
+}
+
+function renderTable() {
+    const db = loadDB();
+    const listEl = document.getElementById('licenseList');
+    const entries = Object.entries(db);
+    let total = entries.length;
+    let active = 0;
+    let expired = 0;
+    entries.forEach(([_, info]) => {
+        if (info.active && !isExpired(info)) active++;
+        else expired++;
+    });
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('activeCount').textContent = active;
+    document.getElementById('expiredCount').textContent = expired;
+    if (total === 0) {
+        listEl.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <div>មិនទាន់មាន License ទេ</div>
+                <div style="margin-top: 8px; font-size: 12px;">បង្កើតដំបូងខាងលើ 👆</div>
+            </div>
+        `;
+        return;
+    }
+    let html = `
+        <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th><th>HWID</th><th>Key</th><th>User</th>
+                    <th>Status</th><th>Expires</th><th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    entries.forEach(([hwid, info], idx) => {
+        const expired = isExpired(info);
+        const isActive = info.active && !expired;
+        const badge = isActive
+            ? '<span class="badge badge-active">🟢 Active</span>'
+            : '<span class="badge badge-expired">🔴 Expired</span>';
+        const userDisplay = info.user_name || info.user_email || '-';
+        html += `
+            <tr>
+                <td>${idx + 1}</td>
+                <td style="color: var(--fg);">${hwid}</td>
+                <td style="color: var(--green); font-weight: 700; letter-spacing: 1px;">${info.key || 'N/A'}</td>
+                <td style="color: var(--muted);">${userDisplay}</td>
+                <td>${badge}</td>
+                <td style="color: var(--muted);">${formatDate(info.expires_at)}</td>
+                <td>
+                    <button class="btn-danger btn-small" onclick="deleteLicense('${hwid.replace(/'/g, "\\'")}')">🗑️</button>
+                </td>
+            </tr>
+        `;
+    });
+    html += '</tbody></table></div>';
+    listEl.innerHTML = html;
+}
+
+function exportDB() {
+    const db = loadDB();
+    const count = Object.keys(db).length;
+    if (count === 0) {
+        showToast("គ្មាន Data សម្រាប់ Export", true);
+        return;
+    }
+    const data = {
+        _exported_at: new Date().toISOString(),
+        _version: "1.0",
+        _count: count,
+        licenses: db
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    a.download = `licenses_backup_${timestamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    const now = new Date().toISOString();
+    localStorage.setItem(BACKUP_KEY, now);
+    updateBackupDisplay();
+    showToast(`Exported ${count} licenses`);
+}
+
+function importDB() {
+    document.getElementById('fileInput').click();
+}
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const licenses = data.licenses || data;
+        if (typeof licenses !== 'object' || Array.isArray(licenses)) {
+            throw new Error("Invalid JSON format");
+        }
+        const count = Object.keys(licenses).length;
+        if (!confirm(`Import ${count} licenses?\n\n⚠️ នឹង Overwrite database បច្ចុប្រែន!`)) {
+            e.target.value = '';
+            return;
+        }
+        saveDB(licenses);
+        showToast(`Imported ${count} licenses`);
+        renderTable();
+    } catch (err) {
+        showToast("Import failed: " + err.message, true);
+    }
+    e.target.value = '';
+});
+
+function updateBackupDisplay() {
+    const lastBackup = localStorage.getItem(BACKUP_KEY);
+    const el = document.getElementById('lastBackup');
+    if (!lastBackup) {
+        el.textContent = "មិនទាន់ Backup";
+        el.style.color = "var(--yellow)";
+    } else {
+        const d = new Date(lastBackup);
+        const daysAgo = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
+        el.textContent = `${formatDate(lastBackup)} (${daysAgo} days ago)`;
+        el.style.color = daysAgo > 7 ? "#F87171" : "var(--green)";
+    }
+}
+
+// Keyboard shortcuts (only active after login)
+document.addEventListener('keydown', (e) => {
+    if (adminPanel.classList.contains('hidden')) return; // login still visible
+    if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); generateKey(); }
+    if (e.ctrlKey && e.key === 'k') { e.preventDefault(); clearForm(); }
+    if (e.ctrlKey && e.key === 's') { e.preventDefault(); exportDB(); }
+});
+
+// Focus on username field when page loads
+window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('loginUser').focus();
+});
+</script>
+</body>
+</html>

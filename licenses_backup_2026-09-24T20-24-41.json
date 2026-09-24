@@ -1,0 +1,23 @@
+{
+  "_exported_at": "2026-09-24T20:24:41.834Z",
+  "_version": "1.0",
+  "_count": 2,
+  "licenses": {
+    "DESKTOP-SUL98M5": {
+      "key": "860AAA90",
+      "user_name": "sopheak",
+      "user_email": "sopheaknot4you@gmail.com",
+      "created_at": "2026-09-25T02:35:40.420573",
+      "expires_at": "2026-10-25T02:35:40.420743",
+      "active": true
+    },
+    "DRIVE-ACB4CE0E": {
+      "key": "2C09130B",
+      "user_name": "vey chhing",
+      "user_email": "veysopheak1234@gmail.com",
+      "active": true,
+      "created_at": "2026-09-24T20:05:32.090Z",
+      "expires_at": "2300-07-09T20:05:32.090Z"
+    }
+  }
+}
